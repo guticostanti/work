@@ -103,7 +103,7 @@ with concurrent.futures.ThreadPoolExecutor() as executor:
     executor.map(getData, urls)
 
 keys = dicts[0].keys()
-with open('fundsExplorer2.csv', 'a', newline='')  as output_file:
+with open('fundsExplorer.csv', 'a', newline='')  as output_file:
     dict_writer = csv.DictWriter(output_file, keys)
     dict_writer.writeheader()
     dict_writer.writerows(dicts)
