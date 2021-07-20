@@ -1,109 +1,187 @@
-import requests
 from bs4 import BeautifulSoup
-import json
-import csv
 import concurrent.futures
+import csv
+import json
+import re
+import requests
 
-# Pegando todos os fundos da primeira página
-webpage = requests.get('https://www.fundsexplorer.com.br/funds').content
-soup = BeautifulSoup(webpage, 'html.parser')
+### teste ###
+# url = 'https://www.fundsexplorer.com.br/funds/atsa11'
 
-first_page_divs = soup.find("div", {"id": "fiis-list-container"})
-first_page_a = first_page_divs.find_all('a')
-
-nao_listadas = ['btgm11', 'eva11', 'omc11', 'mac11', 'ovl11b', 'rit11b', 'amb11b', 'aed11', 'cas11', 'exc11', 'cfl11', 'igs11', 'ci11', 'iib11', 'iip11b', 'isc11', 'ivn11', 'inf11', 'lma11', 'png11', 'mof11', 'lrp11', 'pab11', 'oft11', 'vbi11', 'vpq11', 'chb11', 'ewl11', 'ewu11', 'vho11', 'lu11', 'vif11b', 'adi11', 'aag11', 'aic11b', 'cpf11', 'il11', 'are11', 'eqr11', 'ip11', '11', 'hph11', 'hdp11b', 'hop11', 'jau11', 'ptw11', 'trx11', 'pvj11', 'bsr11', 'rpr11']
-funds = []
-for a in first_page_a:
-    single_link = a['href'].strip('/funds/')
-    if single_link not in nao_listadas:
-        funds.append(single_link)
+# webpage = requests.get(url).content
+# soup = BeautifulSoup(webpage, 'html.parser')
+### fim do teste ###
 
 
 
-# Criando array de urls a partir dos tickers de fundos coletados
-prefix = 'https://www.fundsexplorer.com.br/funds/'
-urls = []
-for fund in funds:
-    urls.append(prefix + fund)
+def get_tickers():
+    webpage = requests.get('https://www.fundsexplorer.com.br/funds').content
+    soup = BeautifulSoup(webpage, 'html.parser')
+    first_page_divs = soup.find("div", {"id": "fiis-list-container"})
+    first_page_a = first_page_divs.find_all('a')
+    nao_listadas = ['btgm11', 'eva11', 'omc11', 'mac11', 'ovl11b', 'rit11b', 'amb11b', 'aed11', 'cas11', 'exc11', 'cfl11', 'igs11', 'ci11', 'iib11', 'iip11b', 'isc11', 'ivn11', 'inf11', 'lma11', 'png11', 'mof11', 'lrp11', 'pab11', 'oft11', 'vbi11', 'vpq11', 'chb11', 'ewl11', 'ewu11', 'vho11', 'lu11', 'vif11b', 'adi11', 'aag11', 'aic11b', 'cpf11', 'il11', 'are11', 'eqr11', 'ip11', '11', 'hph11', 'hdp11b', 'hop11', 'jau11', 'ptw11', 'trx11', 'pvj11', 'bsr11', 'rpr11']
+    tickers = []
+    for a in first_page_a:
+        single_link = a['href'].strip('/funds/')
+        if single_link not in nao_listadas:
+            tickers.append(single_link)
+    return tickers
 
+
+def get_urls():
+    tickers = get_tickers()
+    prefix = 'https://www.fundsexplorer.com.br/funds/'
+    urls = []
+    for ticker in tickers:
+        urls.append(prefix + ticker)
+    return urls
+
+def parse_url():
+    ########### URL DE TESTE ###########
+    url = 'https://www.fundsexplorer.com.br/funds/atsa11'
+    webpage = requests.get(url).content
+    soup = BeautifulSoup(webpage, 'html.parser')
+    return soup
+
+def get_description():
+    description_section = soup.find("section", {"id": "description"})
+    description_content_wrapper = description_section.find("div", {"id": "description-content-wrapper"})
+    description_content_wrapper_2 = description_content_wrapper.find("div", {"id": "description-content-description"})
+    description_paragraphs = description_content_wrapper.find('p').text.split('Características do fundo')[0]
+
+def get_basic_info_section():
+    basic_info_section = soup.find("section", {"id": "basic-infos"})
+    basic_info_li = basic_info_section.find_all('li')
+
+def get_segment():
+    getBasicInfoSection()
+    segment_li = basic_info_li[-5]
+    segment = segment_li.text.strip()
+    segment_text = " ".join(segment.split()).replace('Segmento', '').strip()
+
+def get_performance_fee():
+    getBasicInfoSection()
+    basic_info_li_performance = basic_info_li[6]
+    fii_performance = basic_info_li_performance.text.strip()
+    fii_text_performance = " ".join(fii_performance.split()).split('performance')[1].strip()
+
+
+def get_administration_fee():
+    getBasicInfoSection()
+    basic_info_li_administration = basic_info_li[-3]
+    fii_administration = basic_info_li_administration.text.strip()
+    fii_text_administration = " ".join(fii_administration.split()).split('administração')[1].strip()
+
+def get_dividends():
+    div_dividend_yield_chart = soup.find("div", {"id": "dividends-chart-wrapper"})
+    dividends_script = div_dividend_yield_chart.find('script')
+    regex_date = r'\"labels\"\:(\[.+\"\])'
+    regex_yields = r'data\"\:(\[.+\d\])'
+
+    dates = re.findall(regex_date, str(dividends_script), re.MULTILINE)[0].split(r',"labelColors"')[0]
+    dates = dates.replace("\"", "").strip('][')
+    dates = dates.split(',')
+
+    yields = re.findall(regex_yields, str(dividends_script), re.MULTILINE)[0]
+    yields = yields.replace("\"", "").strip('][')
+    yields = yields.split(',')
+
+    dividends_dict = dict(zip(dates, yields))
+
+def get_dividend_yields():
+    div_yields_chart = soup.find("div", {"id": "yields-chart-wrapper"})
+    script = div_yields_chart.find('script')
+
+    regex_date = r'\"labels\"\:(\[.+\"\])'
+    regex_yields = r'data\"\:(\[.+\d\])'
+
+    dates = re.findall(regex_date, str(script), re.MULTILINE)[0].split(r',"labelColors"')[0]
+    dates = dates.replace("\"", "").strip('][')
+    dates = dates.split(',')
+
+    yields = re.findall(regex_yields, str(script), re.MULTILINE)[0]
+    yields = yields.replace("\"", "").strip('][')
+    yields = yields.split(',')
+
+    dividend_yields_dict = dict(zip(dates, yields))
+
+def patrimonio_liquido():
+    div_yields_chart = soup.find("div", {"id": "patrimonial-value-chart-wrapper"})
+    script = div_yields_chart.find('script')
+
+    regex_date = r'\"labels\"\:(\[.+\"\])'
+    regex_yields = r'data\"\:(\[.+\d\])'
+
+    dates = re.findall(regex_date, str(script), re.MULTILINE)[0].split(r',"labelColors"')[0]
+    dates = dates.replace("\"", "").strip('][')
+    dates = dates.split(',')
+
+    yields = re.findall(regex_yields, str(script), re.MULTILINE)[0]
+    yields = yields.replace("\"", "").strip('][')
+    yields = yields.split(',')
+
+    dividend_yields_dict = dict(zip(dates, yields))
+
+    print(dividend_yields_dict)
+
+
+def vacancy_chart_wrapper():
+    div_dividend_yield_chart = soup.find("div", {"id": "vacancy-chart-wrapper"})
+    dividends_script = div_dividend_yield_chart.find('script')
+    regex_date = r'\"labels\"\:(\[.+\"\])'
+    regex_vacancia = r'data\"\:(\[.+\d\])'
+
+
+def ocupacao_fisica():
+    vacancy_chart_wrapper()
+    ocupacao_fisica = re.findall(regex_vacancia, str(dividends_script), re.MULTILINE)[0].split(r',"backgroundColor"')[0]
+
+
+def vacancia_fisica():
+    vacancy_chart_wrapper()
+    vacancia_fisica = re.findall(regex_vacancia, str(dividends_script), re.MULTILINE)[0].split(r'"data":')[1].split(r',"backgroundColor"')[0]
+
+
+def ocupacao_financeira():
+    vacancy_chart_wrapper()
+    ocupacao_financeira = re.findall(regex_vacancia, str(dividends_script), re.MULTILINE)[0].split(r'"data":')[2].split(r',"backgroundColor"')[0]
+
+
+def vacancia_financeira():
+    vacancy_chart_wrapper()
+    vacancia_financeira = re.findall(regex_vacancia, str(dividends_script), re.MULTILINE)[0].split(r'"data":')[3]
+
+
+
+
+
+# lista de dicionários com informações de cada fundo
 dicts = []
-def getData(url):
-    try:
-        webpage = requests.get(url).content
-        soup = BeautifulSoup(webpage, 'html.parser')
 
-        # fii - Dividend Yield
-        fii_section = soup.find("section", {"id": "dividends"})
-        fii_table = fii_section.find('table')
-        fii_tr = fii_table.find_all('tr')[-1]
-        fii_td = fii_tr.find_all('td')
-        td_dividend_yield_last_year = fii_td[-2].text
-        td_dividend_yield_last_month = fii_td[1].text
-
-        # Taxas de Administração e Performance
-        taxas_section = soup.find("section", {"id": "basic-infos"})
-        taxas_li = taxas_section.find_all('li')
-
-        # Taxa de performance
-        taxas_li_performance = taxas_li[6]
-        fii_performance = taxas_li_performance.text.strip()
-        text_perfomance = " ".join(fii_performance.split()).split('performance')[1].strip()
-
-
-        # Taxa de adm
-        taxas_li_administracao = taxas_li[-3]
-        fii_administracao = taxas_li_administracao.text.strip()
-        text_administracao = " ".join(fii_administracao.split()).split('administração')[1].strip()
-
-
-        # Criação de dicionário
-        new_dict = dict()
-
-        new_dict['ticker'] = url[39:]
-        new_dict['taxa de performance'] = text_perfomance
-        new_dict['taxa de administração'] = text_administracao
-        new_dict['Last Month Dividend Yield'] = td_dividend_yield_last_month
-        new_dict['Last Year Dividend Yield'] = td_dividend_yield_last_year
-
-        dicts.append(new_dict)
-        print(url)
-    except:
-        webpage = requests.get(url).content
-        soup = BeautifulSoup(webpage, 'html.parser')
-
-        # Taxas de Administração e Performance
-        taxas_section = soup.find("section", {"id": "basic-infos"})
-        taxas_li = taxas_section.find_all('li')
-
-        # Taxa de performance
-        taxas_li_performance = taxas_li[6]
-        fii_performance = taxas_li_performance.text.strip()
-        text_perfomance = " ".join(fii_performance.split()).split('performance')[1].strip()
-
-        # Taxa de adm
-        taxas_li_administracao = taxas_li[-3]
-        fii_administracao = taxas_li_administracao.text.strip()
-        text_administracao = " ".join(fii_administracao.split()).split('administração')[1].strip()
-
-        # Criação de dicionário
-        new_dict = dict()
-
-        new_dict['ticker'] = url[39:]
-        new_dict['taxa de performance'] = text_perfomance
-        new_dict['taxa de administração'] = text_administracao
-        new_dict['Last Month Dividend Yield'] = 'N/A'
-        new_dict['Last Year Dividend Yield'] = 'N/A'
-        dicts.append(new_dict)
-
-        print('Only Perforandce and Adm: ' + url)
+def create_dictionary():
+    new_dict = dict()
+    regex_ticker = r'([^\/]+$)'
+    ticker = re.search(regex_ticker, url)
+    ticker = ticker.group(0)
+    new_dict['ticker'] = ticker
+    new_dict['taxa de performance'] = fii_text_performance
+    new_dict['taxa de administração'] = fii_text_administration
+    new_dict['Last Month Dividend Yield'] = td_dividend_yield_last_month
+    new_dict['Last Year Dividend Yield'] = td_dividend_yield_last_year
+    dicts.append(new_dict)
 
 
 
-with concurrent.futures.ThreadPoolExecutor() as executor:
-    executor.map(getData, urls)
+# with concurrent.futures.ThreadPoolExecutor() as executor:
+#     executor.map(getData, urls)
 
-keys = dicts[0].keys()
-with open('fundsExplorer.csv', 'a', newline='')  as output_file:
-    dict_writer = csv.DictWriter(output_file, keys)
-    dict_writer.writeheader()
-    dict_writer.writerows(dicts)
+# keys = dicts[0].keys()
+# with open('fundsExplorer.csv', 'a', newline='')  as output_file:
+#     dict_writer = csv.DictWriter(output_file, keys)
+#     dict_writer.writeheader()
+#     dict_writer.writerows(dicts)
+
+######     TESTES      ##########
+
+
+print(parse_url)
