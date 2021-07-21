@@ -41,7 +41,10 @@ def get_description():
     description_content_wrapper = description_section.find("div", {"id": "description-content-wrapper"})
     description_content_wrapper_2 = description_content_wrapper.find("div", {"id": "description-content-description"})
     description_paragraphs = description_content_wrapper.find('p').text.split('Características do fundo')[0]
+    description_paragraphs = description_paragraphs.replace("\r\n", " ").strip()
     return description_paragraphs
+
+print(get_description())
 
 def get_basic_info_section():
     basic_info_section = soup.find("section", {"id": "basic-infos"})
@@ -160,6 +163,5 @@ def vacancy():
 ######     TESTES      ##########
 
 
-print(get_description())
 
 
