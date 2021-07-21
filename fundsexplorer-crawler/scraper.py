@@ -6,10 +6,10 @@ import re
 import requests
 
 ### teste ###
-# url = 'https://www.fundsexplorer.com.br/funds/atsa11'
+url = 'https://www.fundsexplorer.com.br/funds/atsa11'
 
-# webpage = requests.get(url).content
-# soup = BeautifulSoup(webpage, 'html.parser')
+webpage = requests.get(url).content
+soup = BeautifulSoup(webpage, 'html.parser')
 ### fim do teste ###
 
 
@@ -71,6 +71,21 @@ def get_administration_fee():
     basic_info_li_administration = basic_info_li[-3]
     fii_administration = basic_info_li_administration.text.strip()
     fii_text_administration = " ".join(fii_administration.split()).split('administração')[1].strip()
+
+def get_data_from_graphics(chart_wraper):
+    graphics_div = soup.find("div", {"id": chart_wraper})
+    graphics_script_tag = graphics_div.find('script')
+    regex_date = r'\"labels\"\:(\[.+\"\])'
+    regex_yields = r'data\"\:(\[.+\d\])'
+
+    dates = re.findall(regex_date, str(graphics_script_tag), re.MULTILINE)[0].split(r',"labelColors"')[0]
+    dates = dates.replace("\"", "").strip('][')
+    dates = dates.split(',')
+
+    yields = re.findall(regex_yields, str(graphics_script_tag), re.MULTILINE)[0]
+    yields = yields.replace("\"", "").strip('][')
+    yields = yields.split(',')
+
 
 def get_dividends():
     div_dividend_yield_chart = soup.find("div", {"id": "dividends-chart-wrapper"})
@@ -185,3 +200,7 @@ def create_dictionary():
 
 
 print(parse_url)
+
+
+
+
