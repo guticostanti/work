@@ -106,7 +106,7 @@ def get_patrimonial_value():
     patrimonial_value_dict = dict(zip(dates, patrimonial_value))
     return patrimonial_value_dict
 
-def ocupacao_fisica():
+def vacancy():
     dates = get_data_from_graphics("vacancy-chart-wrapper")[0]
     graphics_script_tag = get_data_from_graphics("vacancy-chart-wrapper")[2]
     regex_data = get_data_from_graphics("vacancy-chart-wrapper")[3]
@@ -160,5 +160,6 @@ def ocupacao_fisica():
 ######     TESTES      ##########
 
 
-print(ocupacao_fisica())
+print(get_description())
+
 
