@@ -5,7 +5,7 @@ import json
 import re
 import requests
 
-def get_tickers():
+def tickers():
     webpage = requests.get('https://www.fundsexplorer.com.br/funds').content
     soup = BeautifulSoup(webpage, 'html.parser')
     first_page_divs = soup.find("div", {"id": "fiis-list-container"})
@@ -19,8 +19,8 @@ def get_tickers():
     return tickers
 
 
-def get_urls():
-    tickers = get_tickers()
+def urls():
+    tickers = tickers()
     prefix = 'https://www.fundsexplorer.com.br/funds/'
     urls = []
     for ticker in tickers:
@@ -32,11 +32,16 @@ def parse_url():
     url = 'https://www.fundsexplorer.com.br/funds/atsa11'
     webpage = requests.get(url).content
     soup = BeautifulSoup(webpage, 'html.parser')
-    return soup
 
-soup = parse_url()
+    regex_ticker = r'([^\/]+$)'
+    current_ticker = re.search(regex_ticker, url)
+    current_ticker = current_ticker.group(0)
 
-def get_description():
+    return soup, current_ticker
+
+soup = parse_url()[0]
+
+def description():
     description_section = soup.find("section", {"id": "description"})
     description_content_wrapper = description_section.find("div", {"id": "description-content-wrapper"})
     description_content_wrapper_2 = description_content_wrapper.find("div", {"id": "description-content-description"})
@@ -44,36 +49,34 @@ def get_description():
     description_paragraphs = description_paragraphs.replace("\r\n", " ").strip()
     return description_paragraphs
 
-print(get_description())
-
-def get_basic_info_section():
+def basic_info_section():
     basic_info_section = soup.find("section", {"id": "basic-infos"})
     basic_info_li = basic_info_section.find_all('li')
     return basic_info_li
 
-def get_segment():
-    basic_info_li = get_basic_info_section()
+def segment():
+    basic_info_li = basic_info_section()
     segment_li = basic_info_li[-5]
-    segment = segment_li.text.strip()
-    segment_text = " ".join(segment.split()).replace('Segmento', '').strip()
+    segment_tag = segment_li.text.strip()
+    segment_text = " ".join(segment_tag.split()).replace('Segmento', '').strip()
     return segment_text
 
-def get_performance_fee():
-    basic_info_li = get_basic_info_section()
+
+def performance_fee():
+    basic_info_li = basic_info_section()
     basic_info_li_performance = basic_info_li[6]
     fii_performance = basic_info_li_performance.text.strip()
     fii_text_performance = " ".join(fii_performance.split()).split('performance')[1].strip()
     return fii_text_performance
 
-
-def get_administration_fee():
-    basic_info_li = get_basic_info_section()
+def administration_fee():
+    basic_info_li = basic_info_section()
     basic_info_li_administration = basic_info_li[-3]
     fii_administration = basic_info_li_administration.text.strip()
     fii_text_administration = " ".join(fii_administration.split()).split('administração')[1].strip()
     return fii_text_administration
 
-def get_data_from_graphics(chart_wraper):
+def data_from_graphics(chart_wraper):
     graphics_div = soup.find("div", {"id": chart_wraper})
     graphics_script_tag = graphics_div.find('script')
     regex_date = r'\"labels\"\:(\[.+\"\])'
@@ -90,29 +93,28 @@ def get_data_from_graphics(chart_wraper):
     return dates, data, graphics_script_tag, regex_data
 
 
-def get_dividends():
-    dates = get_data_from_graphics("dividends-chart-wrapper")[0]
-    dividends = get_data_from_graphics("dividends-chart-wrapper")[1]
+def dividends():
+    dates = data_from_graphics("dividends-chart-wrapper")[0]
+    dividends = data_from_graphics("dividends-chart-wrapper")[1]
     dividends_dict = dict(zip(dates, dividends))
     return dividends_dict
 
-
-def get_dividend_yields():
-    dates = get_data_from_graphics("yields-chart-wrapper")[0]
-    dividend_yields = get_data_from_graphics("yields-chart-wrapper")[1]
+def dividend_yields():
+    dates = data_from_graphics("yields-chart-wrapper")[0]
+    dividend_yields = data_from_graphics("yields-chart-wrapper")[1]
     dividend_yields_dict = dict(zip(dates, dividend_yields))
     return dividend_yields_dict
 
-def get_patrimonial_value():
-    dates = get_data_from_graphics("patrimonial-value-chart-wrapper")[0]
-    patrimonial_value = get_data_from_graphics("patrimonial-value-chart-wrapper")[1]
+def patrimonial_value():
+    dates = data_from_graphics("patrimonial-value-chart-wrapper")[0]
+    patrimonial_value = data_from_graphics("patrimonial-value-chart-wrapper")[1]
     patrimonial_value_dict = dict(zip(dates, patrimonial_value))
     return patrimonial_value_dict
 
 def vacancy():
-    dates = get_data_from_graphics("vacancy-chart-wrapper")[0]
-    graphics_script_tag = get_data_from_graphics("vacancy-chart-wrapper")[2]
-    regex_data = get_data_from_graphics("vacancy-chart-wrapper")[3]
+    dates = data_from_graphics("vacancy-chart-wrapper")[0]
+    graphics_script_tag = data_from_graphics("vacancy-chart-wrapper")[2]
+    regex_data = data_from_graphics("vacancy-chart-wrapper")[3]
     vacancia_fisica = re.findall(regex_data, str(graphics_script_tag), re.MULTILINE)[0].split(r'"data":')[1].split(r',"backgroundColor"')[0]
     vacancia_fisica = json.loads(vacancia_fisica)
     vacancia_financeira = re.findall(regex_data, str(graphics_script_tag), re.MULTILINE)[0].split(r'"data":')[3]
@@ -130,9 +132,27 @@ def vacancy():
 
     return vacancies_dict
 
+def non_historical_data():
+    current_ticker = parse_url()[1]
+    non_historical_data = dict()
+    non_historical_data[current_ticker] = {}
+    non_historical_data[current_ticker]['Description'] = description()
+    non_historical_data[current_ticker]['Segment'] = segment()
+    non_historical_data[current_ticker]['Performance Fee'] = performance_fee()
+    non_historical_data[current_ticker]['Administration Fee'] = administration_fee()
+    return non_historical_data
 
+def historical_data():
+    current_ticker = parse_url()[1]
+    historical_data = dict()
+    historical_data[current_ticker] = {}
+    historical_data[current_ticker]['Dividends'] = dividends()
+    historical_data[current_ticker]['Dividend Yields'] = dividend_yields()
+    historical_data[current_ticker]['Patrimonial Value'] = patrimonial_value()
+    historical_data[current_ticker]['Vacancy'] = vacancy()
+    return historical_data
 
-
+print(non_historical_data())
 
 # lista de dicionários com informações de cada fundo
 # dicts = []
@@ -161,7 +181,4 @@ def vacancy():
 #     dict_writer.writerows(dicts)
 
 ######     TESTES      ##########
-
-
-
 
