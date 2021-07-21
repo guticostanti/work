@@ -5,15 +5,6 @@ import json
 import re
 import requests
 
-### teste ###
-url = 'https://www.fundsexplorer.com.br/funds/atsa11'
-
-webpage = requests.get(url).content
-soup = BeautifulSoup(webpage, 'html.parser')
-### fim do teste ###
-
-
-
 def get_tickers():
     webpage = requests.get('https://www.fundsexplorer.com.br/funds').content
     soup = BeautifulSoup(webpage, 'html.parser')
@@ -43,147 +34,117 @@ def parse_url():
     soup = BeautifulSoup(webpage, 'html.parser')
     return soup
 
+soup = parse_url()
+
 def get_description():
     description_section = soup.find("section", {"id": "description"})
     description_content_wrapper = description_section.find("div", {"id": "description-content-wrapper"})
     description_content_wrapper_2 = description_content_wrapper.find("div", {"id": "description-content-description"})
     description_paragraphs = description_content_wrapper.find('p').text.split('Características do fundo')[0]
+    return description_paragraphs
 
 def get_basic_info_section():
     basic_info_section = soup.find("section", {"id": "basic-infos"})
     basic_info_li = basic_info_section.find_all('li')
+    return basic_info_li
 
 def get_segment():
-    getBasicInfoSection()
+    basic_info_li = get_basic_info_section()
     segment_li = basic_info_li[-5]
     segment = segment_li.text.strip()
     segment_text = " ".join(segment.split()).replace('Segmento', '').strip()
+    return segment_text
 
 def get_performance_fee():
-    getBasicInfoSection()
+    basic_info_li = get_basic_info_section()
     basic_info_li_performance = basic_info_li[6]
     fii_performance = basic_info_li_performance.text.strip()
     fii_text_performance = " ".join(fii_performance.split()).split('performance')[1].strip()
+    return fii_text_performance
 
 
 def get_administration_fee():
-    getBasicInfoSection()
+    basic_info_li = get_basic_info_section()
     basic_info_li_administration = basic_info_li[-3]
     fii_administration = basic_info_li_administration.text.strip()
     fii_text_administration = " ".join(fii_administration.split()).split('administração')[1].strip()
+    return fii_text_administration
 
 def get_data_from_graphics(chart_wraper):
     graphics_div = soup.find("div", {"id": chart_wraper})
     graphics_script_tag = graphics_div.find('script')
     regex_date = r'\"labels\"\:(\[.+\"\])'
-    regex_yields = r'data\"\:(\[.+\d\])'
+    regex_data = r'data\"\:(\[.+\d\])'
 
     dates = re.findall(regex_date, str(graphics_script_tag), re.MULTILINE)[0].split(r',"labelColors"')[0]
     dates = dates.replace("\"", "").strip('][')
     dates = dates.split(',')
 
-    yields = re.findall(regex_yields, str(graphics_script_tag), re.MULTILINE)[0]
-    yields = yields.replace("\"", "").strip('][')
-    yields = yields.split(',')
+    data = re.findall(regex_data, str(graphics_script_tag), re.MULTILINE)[0]
+    data = data.replace("\"", "").strip('][')
+    data = data.split(',')
+
+    return dates, data, graphics_script_tag, regex_data
 
 
 def get_dividends():
-    div_dividend_yield_chart = soup.find("div", {"id": "dividends-chart-wrapper"})
-    dividends_script = div_dividend_yield_chart.find('script')
-    regex_date = r'\"labels\"\:(\[.+\"\])'
-    regex_yields = r'data\"\:(\[.+\d\])'
+    dates = get_data_from_graphics("dividends-chart-wrapper")[0]
+    dividends = get_data_from_graphics("dividends-chart-wrapper")[1]
+    dividends_dict = dict(zip(dates, dividends))
+    return dividends_dict
 
-    dates = re.findall(regex_date, str(dividends_script), re.MULTILINE)[0].split(r',"labelColors"')[0]
-    dates = dates.replace("\"", "").strip('][')
-    dates = dates.split(',')
-
-    yields = re.findall(regex_yields, str(dividends_script), re.MULTILINE)[0]
-    yields = yields.replace("\"", "").strip('][')
-    yields = yields.split(',')
-
-    dividends_dict = dict(zip(dates, yields))
 
 def get_dividend_yields():
-    div_yields_chart = soup.find("div", {"id": "yields-chart-wrapper"})
-    script = div_yields_chart.find('script')
+    dates = get_data_from_graphics("yields-chart-wrapper")[0]
+    dividend_yields = get_data_from_graphics("yields-chart-wrapper")[1]
+    dividend_yields_dict = dict(zip(dates, dividend_yields))
+    return dividend_yields_dict
 
-    regex_date = r'\"labels\"\:(\[.+\"\])'
-    regex_yields = r'data\"\:(\[.+\d\])'
-
-    dates = re.findall(regex_date, str(script), re.MULTILINE)[0].split(r',"labelColors"')[0]
-    dates = dates.replace("\"", "").strip('][')
-    dates = dates.split(',')
-
-    yields = re.findall(regex_yields, str(script), re.MULTILINE)[0]
-    yields = yields.replace("\"", "").strip('][')
-    yields = yields.split(',')
-
-    dividend_yields_dict = dict(zip(dates, yields))
-
-def patrimonio_liquido():
-    div_yields_chart = soup.find("div", {"id": "patrimonial-value-chart-wrapper"})
-    script = div_yields_chart.find('script')
-
-    regex_date = r'\"labels\"\:(\[.+\"\])'
-    regex_yields = r'data\"\:(\[.+\d\])'
-
-    dates = re.findall(regex_date, str(script), re.MULTILINE)[0].split(r',"labelColors"')[0]
-    dates = dates.replace("\"", "").strip('][')
-    dates = dates.split(',')
-
-    yields = re.findall(regex_yields, str(script), re.MULTILINE)[0]
-    yields = yields.replace("\"", "").strip('][')
-    yields = yields.split(',')
-
-    dividend_yields_dict = dict(zip(dates, yields))
-
-    print(dividend_yields_dict)
-
-
-def vacancy_chart_wrapper():
-    div_dividend_yield_chart = soup.find("div", {"id": "vacancy-chart-wrapper"})
-    dividends_script = div_dividend_yield_chart.find('script')
-    regex_date = r'\"labels\"\:(\[.+\"\])'
-    regex_vacancia = r'data\"\:(\[.+\d\])'
-
+def get_patrimonial_value():
+    dates = get_data_from_graphics("patrimonial-value-chart-wrapper")[0]
+    patrimonial_value = get_data_from_graphics("patrimonial-value-chart-wrapper")[1]
+    patrimonial_value_dict = dict(zip(dates, patrimonial_value))
+    return patrimonial_value_dict
 
 def ocupacao_fisica():
-    vacancy_chart_wrapper()
-    ocupacao_fisica = re.findall(regex_vacancia, str(dividends_script), re.MULTILINE)[0].split(r',"backgroundColor"')[0]
+    dates = get_data_from_graphics("vacancy-chart-wrapper")[0]
+    graphics_script_tag = get_data_from_graphics("vacancy-chart-wrapper")[2]
+    regex_data = get_data_from_graphics("vacancy-chart-wrapper")[3]
+    vacancia_fisica = re.findall(regex_data, str(graphics_script_tag), re.MULTILINE)[0].split(r'"data":')[1].split(r',"backgroundColor"')[0]
+    vacancia_fisica = json.loads(vacancia_fisica)
+    vacancia_financeira = re.findall(regex_data, str(graphics_script_tag), re.MULTILINE)[0].split(r'"data":')[3]
+    vacancia_financeira = json.loads(vacancia_financeira)
 
+    vacancies_dict = dict()
+    for x in range(0, len(dates)):
+        vacancies_list = {
+            dates[x]: {
+                "vacância física": vacancia_fisica[x],
+                "vacância financeira": vacancia_financeira[x]
+            }
+        }
+        vacancies_dict.update(vacancies_list)
 
-def vacancia_fisica():
-    vacancy_chart_wrapper()
-    vacancia_fisica = re.findall(regex_vacancia, str(dividends_script), re.MULTILINE)[0].split(r'"data":')[1].split(r',"backgroundColor"')[0]
-
-
-def ocupacao_financeira():
-    vacancy_chart_wrapper()
-    ocupacao_financeira = re.findall(regex_vacancia, str(dividends_script), re.MULTILINE)[0].split(r'"data":')[2].split(r',"backgroundColor"')[0]
-
-
-def vacancia_financeira():
-    vacancy_chart_wrapper()
-    vacancia_financeira = re.findall(regex_vacancia, str(dividends_script), re.MULTILINE)[0].split(r'"data":')[3]
+    return vacancies_dict
 
 
 
 
 
 # lista de dicionários com informações de cada fundo
-dicts = []
+# dicts = []
 
-def create_dictionary():
-    new_dict = dict()
-    regex_ticker = r'([^\/]+$)'
-    ticker = re.search(regex_ticker, url)
-    ticker = ticker.group(0)
-    new_dict['ticker'] = ticker
-    new_dict['taxa de performance'] = fii_text_performance
-    new_dict['taxa de administração'] = fii_text_administration
-    new_dict['Last Month Dividend Yield'] = td_dividend_yield_last_month
-    new_dict['Last Year Dividend Yield'] = td_dividend_yield_last_year
-    dicts.append(new_dict)
+# def create_dictionary():
+#     new_dict = dict()
+#     regex_ticker = r'([^\/]+$)'
+#     ticker = re.search(regex_ticker, url)
+#     ticker = ticker.group(0)
+#     new_dict['ticker'] = ticker
+#     new_dict['taxa de performance'] = fii_text_performance
+#     new_dict['taxa de administração'] = fii_text_administration
+#     new_dict['Last Month Dividend Yield'] = td_dividend_yield_last_month
+#     new_dict['Last Year Dividend Yield'] = td_dividend_yield_last_year
+#     dicts.append(new_dict)
 
 
 
@@ -199,8 +160,5 @@ def create_dictionary():
 ######     TESTES      ##########
 
 
-print(parse_url)
-
-
-
+print(ocupacao_fisica())
 
