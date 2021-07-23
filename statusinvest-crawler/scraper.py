@@ -1,62 +1,108 @@
 from bs4 import BeautifulSoup
-import concurrent.futures
-import csv
 import json
 import psycopg2
 import requests
 from typing import List
+import re
 
-def _tickers_from_db() -> List[str]:
-    conn = psycopg2.connect(
-        host="env6.lionx.ai",
-        database="lionx",
-        user="lionx",
-        password="FAJvJ4eCVQNexTRL")
+# def _convert_tuple_in_string(tup: tuple) -> str:
+#     str = ''
+#     for item in tup:
+#         str = str + item
+#     return str
 
-    cur = conn.cursor()
-    cur.execute("select distinct pk_value from equities;")
-    raw_tickers = cur.fetchall()
-    return raw_tickers
+# def tickers_from_db() -> List[str]:
+#     conn = psycopg2.connect(
+#         host="env6.lionx.ai",
+#         database="lionx",
+#         user="lionx",
+#         password="FAJvJ4eCVQNexTRL")
 
-def _convert_tuple_in_string(tup):
-    str = ''
-    for item in tup:
-        str = str + item
-    return str
+#     cur = conn.cursor()
+#     cur.execute("select distinct pk_value from equities;")
+#     raw_tickers = cur.fetchall()
+#     return raw_tickers
 
-def _tickers_list():
-    raw_tickers = _tickers_from_db()
-    tickers = []
-    for ticker in raw_tickers:
-        ticker = _convert_tuple_in_string(ticker).lower()
-        tickers.append(ticker)
-    return tickers
+# def tickers_list() -> List[str]:
+#     raw_tickers = tickers_from_db()
+#     tickers = []
+#     for ticker in raw_tickers:
+#         ticker = _convert_tuple_in_string(ticker).lower()
+#         tickers.append(ticker)
+#     return tickers
 
-print(_tickers_list())
+# def build_stock_tickers_urls() -> List[str]:
+#     tickers = tickers_list()
+#     prefix = 'https://statusinvest.com.br/acoes/'
+#     urls = []
+#     for ticker in tickers:
+#         urls.append(prefix + ticker)
+#     return urls
 
-def _build_stock_tickers_urls():
-    prefix = 'https://statusinvest.com.br/acoes/'
-    urls = []
-    for ticker in tickers:
-        urls.append(prefix + ticker)
-
-
-
-
-
-
-# def build_ticker_urls() -> List[str]:
 
 # dicts = []
 
-# def parse_url():
-#     webpage = requests.get(url).content
-#     soup = BeautifulSoup(webpage, 'html.parser')
+######################## TESTE ############################
 
 
 
-# def getContent(url):
-#     try:
+# url ='https://statusinvest.com.br/acoes/petr4'
+# webpage = requests.get(url).content
+# soup = BeautifulSoup(webpage, 'html.parser')
+
+def dividend_yield():
+    div_dividend_yield = soup.find("div", {"title": "Dividend Yield com base nos últimos 12 meses"})
+    dividend_yield_element = div_dividend_yield.find("strong", {"class": "value"}).text
+    dividend_yield = dividend_yield_element + '%'
+    return dividend_yield
+
+# P/L
+def preco_por_lucro():
+    div_preco_por_lucro = soup.find("div", {"title": "Dá uma ideia do quanto o mercado está disposto a pagar pelos lucros da empresa."})
+    preco_por_lucro = div_preco_por_lucro.find("strong", {"class": "value d-block lh-4 fs-4 fw-700"}).text
+    return preco_por_lucro
+
+# ROE
+def return_on_equity():
+    div_return_on_equity = soup.find("div", {"title": "Mede a capacidade de agregar valor de uma empresa a partir de seus próprios recursos e do dinheiro de investidores."})
+    return_on_equity = div_return_on_equity.find("strong", {"class": "value d-block lh-4 fs-4 fw-700"}).text
+    return return_on_equity
+
+# ROA
+def return_on_assets():
+    div_return_on_assets = soup.find("div", {"title": "O retorno sobre os ativos ou Return on Assets, é um indicador de rentabilidade, que calcula a capacidade de uma empresa gerar lucro a partir dos seus ativos, além de indiretamente, indicar a eficiência dos seus gestores."})
+    return_on_assets = div_return_on_assets.find("strong", {"class": "value d-block lh-4 fs-4 fw-700"}).text
+    return return_on_assets
+
+# Margem Líquida
+def net_margin():
+    div_net_margin = soup.find("div", {"title": "Revela a porcentagem de lucro em relação às receitas de uma empresa."})
+    net_margin =div_net_margin.find('strong', {"class": "value d-block lh-4 fs-4 fw-700"}).text
+    return net_margin
+
+
+
+url_endpoint = 'https://statusinvest.com.br/acao/getdre?companyName=petrobras&type=1'
+webpage = requests.get(url_endpoint).content
+soup = BeautifulSoup(webpage, 'html.parser')
+
+# regex_lucro_liquido = re.compile(r'\"lucroLiquido\"\:(\[.*\])')
+
+
+# dict_lucro_liquido = regex_lucro_liquido.findall(str(soup), re.MULTILINE)[0][1:-1].split('},')[0] + '}'
+
+data = json.loads(str(soup))
+
+
+
+
+
+
+
+
+
+
+
 
 #         div = soup.find("div", {"id": "earning-section"})
 #         element_input = div.find('input')
